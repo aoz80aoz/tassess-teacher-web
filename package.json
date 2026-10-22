@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "package": "bash scripts/package-production.sh"
   },
   "dependencies": {
     "@next/third-parties": "^16.4.2",

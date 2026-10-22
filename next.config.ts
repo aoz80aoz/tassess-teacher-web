@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // A self-contained server (.next/standalone): runs with `node server.js`
+  // on the production server, without installing node_modules there.
+  output: "standalone",
   // Cache Components stays off: the dashboard is client-rendered per
   // teacher, and the marketing pages are static without it.
   turbopack: {

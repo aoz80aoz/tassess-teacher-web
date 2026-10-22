@@ -26,11 +26,12 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ar_SA",
     siteName: S.appName,
-    title: S.seo.defaultTitle,
-    description: S.seo.description,
+    // Short and clear for link previews (WhatsApp shows ~2 lines).
+    title: S.seo.shareTitle,
+    description: S.seo.shareDescription,
     url: "/",
   },
-  twitter: { card: "summary_large_image", title: S.seo.defaultTitle, description: S.seo.description },
+  twitter: { card: "summary_large_image", title: S.seo.shareTitle, description: S.seo.shareDescription },
   formatDetection: { telephone: false },
 };
 

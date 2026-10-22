@@ -33,9 +33,9 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <form onSubmit={submit} noValidate className="flex w-full max-w-md flex-col gap-5 rounded-3xl border border-line bg-white p-8">
+    <form onSubmit={submit} noValidate className="flex w-full max-w-md flex-col gap-5 rounded-2xl border border-line bg-white p-5 sm:rounded-3xl sm:p-8">
       <div className="flex flex-col gap-1.5">
-        <h1 className="text-[26px] font-bold">{S.auth.forgotTitle}</h1>
+        <h1 className="text-2xl font-bold sm:text-[26px]">{S.auth.forgotTitle}</h1>
         <p className="text-muted">{S.auth.forgotSubtitle}</p>
       </div>
       {done ? (

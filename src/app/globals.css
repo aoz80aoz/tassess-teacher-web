@@ -64,10 +64,11 @@ body {
   }
 }
 
-/* In the base layer so a field's own `outline-none` (it shows its focus
-   with its border) wins over this default. */
+/* The default focus outline. It must sit in the base layer: unlayered CSS
+   beats every Tailwind utility, so a field's own `outline-none` (it shows
+   its focus with its border) would lose and draw a box inside the field. */
 @layer base {
-  :focus-visible {
+  :where(:focus-visible) {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
   }

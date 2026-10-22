@@ -138,10 +138,10 @@ export function RegisterForm() {
   );
 
   return (
-    <div className="flex w-full max-w-lg flex-col gap-5 rounded-3xl border border-line bg-white p-8">
+    <div className="flex w-full max-w-lg flex-col gap-5 rounded-2xl border border-line bg-white p-5 sm:rounded-3xl sm:p-8">
       <div className="flex flex-col gap-1.5">
         <span className="text-sm font-semibold text-accent">{S.auth.stepOf(stepIndex, stepLabel)}</span>
-        <h1 className="text-[26px] font-bold">{step === "otp" ? S.auth.otpTitle : step === "school" ? S.auth.schoolTitle : S.auth.registerTitle}</h1>
+        <h1 className="text-2xl font-bold sm:text-[26px]">{step === "otp" ? S.auth.otpTitle : step === "school" ? S.auth.schoolTitle : S.auth.registerTitle}</h1>
         <p className="text-muted">{step === "otp" ? S.auth.otpSent(phone) : S.auth.registerSubtitle}</p>
         <div className="mt-2 grid grid-cols-3 gap-1.5" aria-hidden="true">
           {[1, 2, 3].map((n) => (
