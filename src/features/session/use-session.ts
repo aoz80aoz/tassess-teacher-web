@@ -30,7 +30,7 @@ export function isEditable(session: Session) {
   return session.status === "pending" && Boolean(start && start.getTime() > Date.now());
 }
 
-/** Attendance can be saved once the session started (or was run early). */
+/** Attendance can be saved once the session's start time has come. */
 export function canTakeAttendance(session: Session) {
   if (session.status !== "pending") return true;
   const start = parseApiDate(session.starts_at);

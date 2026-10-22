@@ -3,8 +3,7 @@
 import clsx from "clsx";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { Suspense, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/Dialog";
@@ -21,7 +20,6 @@ import { AttendancePanel } from "@/features/session/AttendancePanel";
 import { LessonTextCard } from "@/features/session/LessonTextCard";
 import { useSession } from "@/features/session/use-session";
 import { useTextScale } from "@/features/session/use-text-scale";
-import { api } from "@/lib/api/client";
 import { Endpoints } from "@/lib/api/endpoints";
 import { useApiMutation, useApiQuery } from "@/lib/api/hooks";
 import type { MindMap, Question, RankedStudent, Session } from "@/lib/api/types";
@@ -94,7 +92,6 @@ function RunView() {
   const params = useSearchParams();
   const router = useRouter();
   const toast = useToast();
-  const queryClient = useQueryClient();
   const query = useSession(sessionId);
   const questions = useApiQuery<Question[]>(Endpoints.classSessionQuestions, { session_id: sessionId });
   const maps = useApiQuery<MindMap[]>(Endpoints.classSessionMindMaps, { session_id: sessionId });
@@ -103,18 +100,7 @@ function RunView() {
   const [tool, setTool] = useState<"quiz" | "kagan" | null>(null);
   const [ending, setEnding] = useState(false);
   const [scale, setScale] = useTextScale();
-  const started = useRef(false);
   const end = useApiMutation(Endpoints.classSessionMarkAsCompleted, { invalidates: [Endpoints.classSessionShow, Endpoints.showGroup, Endpoints.home] });
-
-  // Opening the run screen starts a pending session (attendance unlocks).
-  useEffect(() => {
-    const s = query.data;
-    if (!s || s.status !== "pending" || started.current) return;
-    started.current = true;
-    api(Endpoints.classSessionStart, { session_id: s.id })
-      .then(() => queryClient.invalidateQueries({ queryKey: [Endpoints.classSessionShow] }))
-      .catch(() => null);
-  }, [query.data, queryClient]);
 
   return (
     <QueryView query={query} loading={<div className="p-6"><PageSkeleton /></div>}>

@@ -17,7 +17,7 @@ import { Endpoints } from "@/lib/api/endpoints";
 import { useApiMutation, useApiQuery } from "@/lib/api/hooks";
 import type { StudentBehaviours, StudentDetails, StudentExam } from "@/lib/api/types";
 import { saveCsv, stamp } from "@/lib/download";
-import { percent } from "@/lib/format";
+import { examTitle, percent } from "@/lib/format";
 import { S } from "@/lib/strings";
 
 type DialogKind = "degrees" | "badges" | "patterns" | "behaviour" | "taseese" | "export" | "remove" | null;
@@ -31,7 +31,7 @@ export default function StudentPage() {
   const classroom = useClassroom(classroomId);
   const query = useApiQuery<StudentDetails>(Endpoints.getStudent, { group_id: classroomId, student_id: sid });
   const behaviours = useApiQuery<StudentBehaviours>(Endpoints.studentBehaviours, { group_id: classroomId, student_id: sid });
-  const work = useApiQuery<{ exams: StudentExam[] }>(Endpoints.studentExams, { group_id: classroomId, student_id: sid });
+  const work = useApiQuery<{ exams: StudentExam[] }>(Endpoints.studentExams, { group_id: classroomId, student_id: sid, category: "all" });
   const crumbs = useClassroomCrumbs(classroom.data, query.data?.student.name);
   const [dialog, setDialog] = useState<DialogKind>(null);
   const remove = useApiMutation(Endpoints.deleteStudent, { invalidates: [Endpoints.getGroupStudents, Endpoints.showGroup, Endpoints.allGroups] });
@@ -54,7 +54,7 @@ export default function StudentPage() {
               [S.students.parentPhone, st.parent_phone ?? ""],
               ...stats.map((s) => [s.label, percent(s.v)]),
               [S.student.behaviour, S.student.behaviourCounts(behaviours.data?.positive_count ?? 0, behaviours.data?.negative_count ?? 0)],
-              ...(work.data?.exams ?? []).map((e) => [e.title, e.result?.student_marks ? `${Number(e.result.student_marks)} / ${Number(e.total_marks)}` : S.student.notEvaluated]),
+              ...(work.data?.exams ?? []).map((e) => [examTitle(e, { exam: S.assessments.kindExam, homework: S.assessments.kindHomework }), e.result?.student_marks ? `${Number(e.result.student_marks)} / ${Number(e.total_marks)}` : S.student.notEvaluated]),
             ],
             `student_${st.id}_${stamp()}`,
           );
@@ -109,13 +109,13 @@ export default function StudentPage() {
             </Card>
 
             <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
-              <button type="button" disabled={!d.has_taseese_report} onClick={() => setDialog("taseese")} className="flex items-center gap-3.5 rounded-2xl border border-primary-200 bg-tile p-5 text-start disabled:opacity-60">
+              <button type="button" disabled={d.has_taseese_report === false} onClick={() => setDialog("taseese")} className="flex items-center gap-3.5 rounded-2xl border border-primary-200 bg-tile p-5 text-start disabled:opacity-60">
                 <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-white text-primary">
                   <Icon name="chart" className="size-6" />
                 </span>
                 <span className="flex-1">
                   <strong className="block">{S.student.taseeseReports}</strong>
-                  <span className="text-sm text-muted">{d.has_taseese_report ? S.common.details : S.student.taseeseNone}</span>
+                  <span className="text-sm text-muted">{d.has_taseese_report === false ? S.student.taseeseNone : S.common.details}</span>
                 </span>
                 <Icon name="chevronLeft" />
               </button>
@@ -210,7 +210,7 @@ export default function StudentPage() {
                     return (
                       <div key={e.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-surface px-3.5 py-3">
                         <span>
-                          <strong className="font-semibold">{e.title}</strong> <span className="text-sm text-muted">· {e.category === "exam" ? S.assessments.kindExam : S.assessments.kindHomework}</span>
+                          <strong className="font-semibold">{examTitle(e, { exam: S.assessments.kindExam, homework: S.assessments.kindHomework })}</strong> <span className="text-sm text-muted">· {e.category === "exam" ? S.assessments.kindExam : S.assessments.kindHomework}</span>
                         </span>
                         <Chip tone={graded ? (e.result!.is_passed ? "success" : "danger") : "warning"}>
                           {graded ? `${Number(e.result!.student_marks)} / ${Number(e.total_marks)}` : S.student.notEvaluated}

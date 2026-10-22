@@ -74,7 +74,7 @@ function StudentSessionDialog({ sessionId, classroomId, onClose }: { sessionId: 
   const report = useApiQuery<StudentSessionReport>(Endpoints.getStudentSessionReport, { session_id: sessionId, student_id: Number(chosen) }, { enabled: sessionId !== null && Boolean(chosen) });
   const r = report.data;
   const R = S.classroomReports;
-  const attendance = !r || r.attendance.is_present === null ? R.notTaken : !r.attendance.is_present ? R.absentLabel : r.attendance.is_late ? R.lateLabel : R.presentLabel;
+  const attendance = !r?.attendance || r.attendance.is_present === null ? R.notTaken : !r.attendance.is_present ? R.absentLabel : r.attendance.is_late ? R.lateLabel : R.presentLabel;
   return (
     <Dialog open={sessionId !== null} onClose={onClose} title={R.studentReportTitle}>
       <div className="flex flex-col gap-4">
@@ -89,7 +89,7 @@ function StudentSessionDialog({ sessionId, classroomId, onClose }: { sessionId: 
         {r && (
           <div className="grid grid-cols-2 gap-3">
             {[
-              [R.sessionAttendance, `${attendance}${r.attendance.is_late && r.attendance.present_at ? ` · ${formatTime(r.attendance.present_at)}` : ""}`],
+              [R.sessionAttendance, `${attendance}${r.attendance?.is_late && r.attendance.present_at ? ` · ${formatTime(r.attendance.present_at)}` : ""}`],
               [R.positiveCount, String(r.activity.positive_count)],
               [R.negativeCount, String(r.activity.negative_count)],
               [R.netPoints, String(r.activity.net_points)],

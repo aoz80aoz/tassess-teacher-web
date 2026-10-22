@@ -9,6 +9,7 @@ import { EmptyState, QueryView } from "@/components/ui/States";
 import { SessionStatusChip } from "@/features/common/SessionStatusChip";
 import { useHome, useTeacher } from "@/features/shell/use-teacher";
 import { formatDate, formatTime, parseApiDate, percent } from "@/lib/format";
+import { fileUrl } from "@/lib/site";
 import type { HomeData, TodaySession } from "@/lib/api/types";
 import { S } from "@/lib/strings";
 
@@ -86,12 +87,19 @@ function Stats({ data }: { data: HomeData }) {
   );
 }
 
-const FEATURES: { title: string; body: string; icon: IconName }[] = [
-  { title: S.home.featureKagan, body: S.home.featureKaganBody, icon: "clock" },
-  { title: S.home.featureWheel, body: S.home.featureWheelBody, icon: "wheel" },
-  { title: S.home.featureTaseese, body: S.home.featureTaseeseBody, icon: "doc" },
-  { title: S.home.featurePortfolio, body: S.home.featurePortfolioBody, icon: "folder" },
-];
+/** The home API's banners (managed in the dashboard), in their order. */
+function Banners({ banners }: { banners: HomeData["banners"] }) {
+  const list = [...banners].sort((a, b) => a.order - b.order).filter((b) => fileUrl(b.img));
+  if (!list.length) return null;
+  return (
+    <section aria-label={S.home.banners} className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-1">
+      {list.map((b) => (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img key={b.id} src={fileUrl(b.img)!} alt="" className="aspect-[3/1] w-full max-w-3xl shrink-0 snap-start rounded-[20px] bg-soft object-cover" />
+      ))}
+    </section>
+  );
+}
 
 export default function HomePage() {
   const home = useHome();
@@ -123,6 +131,8 @@ export default function HomePage() {
               </Link>
             )}
           </div>
+
+          <Banners banners={data.banners} />
 
           <Stats data={data} />
 
@@ -177,20 +187,6 @@ export default function HomePage() {
             </Card>
           </div>
 
-          <section className="flex flex-col gap-4">
-            <h2 className="text-lg font-semibold">{S.home.features}</h2>
-            <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]">
-              {FEATURES.map((f) => (
-                <Card key={f.title} className="flex flex-col gap-2">
-                  <span className="grid size-11 place-items-center rounded-xl bg-accent-soft text-accent">
-                    <Icon name={f.icon} />
-                  </span>
-                  <div className="font-semibold">{f.title}</div>
-                  <div className="text-sm text-muted">{f.body}</div>
-                </Card>
-              ))}
-            </div>
-          </section>
         </>
       )}
     </QueryView>

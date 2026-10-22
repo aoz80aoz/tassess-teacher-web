@@ -1,20 +1,50 @@
 "use client";
 
 import { useState } from "react";
+import { ButtonLink } from "@/components/ui/Button";
 import { Card, Chip } from "@/components/ui/Card";
+import { Select } from "@/components/ui/Field";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ProgressBar } from "@/components/ui/Progress";
-import { QueryView } from "@/components/ui/States";
+import { EmptyState, ErrorState, PageSkeleton, QueryView } from "@/components/ui/States";
 import { Tabs } from "@/components/ui/Tabs";
+import { useSubscriptions } from "@/features/shell/use-teacher";
 import { Endpoints } from "@/lib/api/endpoints";
 import { useApiQuery } from "@/lib/api/hooks";
 import type { AcademicCalendar } from "@/lib/api/types";
-import { formatDate, formatHijri, percent } from "@/lib/format";
+import { currentHijriYear, formatDate, formatHijri, percent } from "@/lib/format";
 import { S } from "@/lib/strings";
 
 export default function CalendarPage() {
-  const query = useApiQuery<AcademicCalendar>(Endpoints.academicCalendar);
+  const subs = useSubscriptions();
+  const list = subs.data?.subscriptions ?? [];
+  const [categoryPicked, setCategoryPicked] = useState<number | null>(null);
+  const categoryId = categoryPicked ?? list[0]?.subject_category_id;
+  // Postman: the calendar summary is per specialty (category_id).
+  const query = useApiQuery<AcademicCalendar>(Endpoints.academicCalendar, { category_id: categoryId }, { enabled: Boolean(categoryId) });
   const [picked, setPicked] = useState<string | null>(null);
+
+  if (subs.isPending) return <PageSkeleton />;
+  if (subs.error) return <ErrorState error={subs.error} onRetry={() => subs.refetch()} />;
+  if (!list.length) return <EmptyState icon="calendar" title={S.home.noSpecialties} action={<ButtonLink href="/app/subscriptions">{S.nav.subscribeNow}</ButtonLink>} />;
+
+  const specialty = (
+    <Select
+      label={S.calendar.specialty}
+      wrapperClassName="min-w-56"
+      value={categoryId ?? ""}
+      onChange={(e) => {
+        setCategoryPicked(Number(e.target.value));
+        setPicked(null);
+      }}
+    >
+      {list.map((s) => (
+        <option key={s.id} value={s.subject_category_id}>
+          {s.subject_category.name}
+        </option>
+      ))}
+    </Select>
+  );
 
   return (
     <QueryView query={query}>
@@ -25,7 +55,7 @@ export default function CalendarPage() {
         const events = data.events[current] ?? [];
         return (
           <>
-            <PageHeader title={S.calendar.title} subtitle={S.calendar.hijriYear(data.hijri_year)} />
+            <PageHeader title={S.calendar.title} subtitle={S.calendar.hijriYear(data.hijri_year ?? currentHijriYear())} actions={specialty} />
             <Tabs
               label={S.calendar.title}
               items={keys.map((k, i) => ({ key: k, label: S.calendar.term(i + 1) }))}

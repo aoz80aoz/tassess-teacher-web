@@ -52,6 +52,7 @@ export interface NationalitiesAndRegions {
 // ---- Home ----
 export interface SubjectCategory extends Named {
   img?: string | null;
+  classroom_id?: number;
   classroom?: Named | null;
   stage?: Named | null;
 }
@@ -117,7 +118,7 @@ export interface CalendarEvent {
 }
 
 export interface AcademicCalendar {
-  hijri_year: number;
+  hijri_year?: number;
   cards: Record<string, CalendarTerm>;
   events: Record<string, CalendarEvent[]>;
 }
@@ -256,7 +257,7 @@ export interface StudentDetails {
   engagement_rate: number;
   homework_average_grade: number;
   exam_average_grade: { grade: number; max_grade: number };
-  has_taseese_report: boolean;
+  has_taseese_report?: boolean;
 }
 
 export interface ActivityType {
@@ -288,9 +289,10 @@ export interface Exam {
   id: number;
   group_id: number;
   class_session_id: number | null;
-  type: "file" | "taseese";
+  type: "file" | "electronic";
   category: AssessmentCategory;
-  title: string;
+  /** null for exams made from the Taseese bank. */
+  title: string | null;
   description: string | null;
   total_marks: string;
   passing_marks: string;
@@ -375,7 +377,7 @@ export interface SessionStatistics {
 }
 
 export interface StudentSessionReport {
-  attendance: { is_present: number | null; is_late: number; present_at: string | null };
+  attendance: { is_present: number | null; is_late: number; present_at: string | null } | null;
   activity: { positive_count: number; negative_count: number; positive_points: number; negative_points: number; net_points: number };
   homework: { total_count: number; passed_count: number; average_grade: number };
 }
@@ -535,6 +537,8 @@ export interface Ticket {
   priority: string;
   status: TicketStatus;
   created_at: string;
+  rating?: number | null;
+  rating_comment?: string | null;
 }
 
 export interface TicketReply {
@@ -565,12 +569,15 @@ export interface SocialMedia {
   name: string;
   email: string | null;
   whatsapp: string | null;
+  facebook: string | null;
   twitter: string | null;
   instagram: string | null;
   snapchat: string | null;
   tiktok: string | null;
   youtube: string | null;
   linkedIn: string | null;
+  pinterest: string | null;
+  telegram: string | null;
 }
 
 // ---- Portfolio (the achievement JSON file, same format as the app) ----
@@ -594,9 +601,28 @@ export interface PortfolioPayload {
   achievement: {
     title: string;
     folders: PortfolioFolder[];
-    daily_report_data: Record<string, string>;
+    daily_report_data: DailyReportData;
   };
 }
+
+/** The app's daily report (notes_local_data_source.dart _dailyReportDataFromFixedPortfolioData). */
+export interface DailyReportData {
+  report_title: string;
+  school_info: { ministry: string; school_name: string; region_name: string; region: { name: string } };
+  report_fields: Record<DailyReportField, string>;
+  signatures: { teacher_name: string; principal_name: string };
+}
+
+export type DailyReportField =
+  | "subject_execution_status"
+  | "lesson_goals_achievement"
+  | "average_participation"
+  | "average_comprehension"
+  | "educational_tools"
+  | "teaching_method"
+  | "immediate_interventions"
+  | "difficulties_and_challenges"
+  | "general_notes";
 
 export interface PortfolioConstants {
   grouped_constants: Record<string, { id: number; section: string; content: string }[]>;

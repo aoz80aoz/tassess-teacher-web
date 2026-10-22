@@ -6,7 +6,7 @@ export function ContactChannels({ social }: { social: SocialMedia | null }) {
   const channels: { icon: IconName; label: string; value: string; href: string }[] = [];
   if (social?.email) channels.push({ icon: "mail", label: S.more.email, value: social.email, href: `mailto:${social.email}` });
   if (social?.whatsapp) channels.push({ icon: "whatsapp", label: S.more.whatsapp, value: social.whatsapp, href: `https://wa.me/${social.whatsapp.replace(/\D/g, "")}` });
-  const links = (["twitter", "instagram", "snapchat", "tiktok", "youtube", "linkedIn"] as const).filter((k) => social?.[k]);
+  const links = (["facebook", "twitter", "instagram", "snapchat", "tiktok", "youtube", "linkedIn", "pinterest", "telegram"] as const).filter((k) => social?.[k]);
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]">

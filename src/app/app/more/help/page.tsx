@@ -24,7 +24,7 @@ export default function HelpCenterPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ category: "", subject: "", message: "" });
   const [error, setError] = useState<string | null>(null);
-  const create = useApiMutation<Ticket>(Endpoints.createHelpCenter, { invalidates: [Endpoints.helpCenter] });
+  const create = useApiMutation<Ticket | null>(Endpoints.createHelpCenter, { invalidates: [Endpoints.helpCenter] });
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -40,7 +40,8 @@ export default function HelpCenterPage() {
           toast.show(S.more.ticketCreated);
           setOpen(false);
           setForm({ category: "", subject: "", message: "" });
-          router.push(`/app/more/help/${t.id}`);
+          // Open the new ticket when the API returns it; else stay on the list.
+          if (t?.id) router.push(`/app/more/help/${t.id}`);
         },
         onError: (e) => setError(e.message),
       },

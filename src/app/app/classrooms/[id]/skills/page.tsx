@@ -49,34 +49,22 @@ export default function SkillsPage() {
   const [status, setStatus] = useState<SkillStatus>("missing");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [studentsOf, setStudentsOf] = useState<Skill | null>(null);
-  const [confirm, setConfirm] = useState<"moveAll" | "delete" | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const missing = useApiQuery<Skill[]>(Endpoints.skillsGroup, { group_id: classroomId, status: "missing" });
   const improved = useApiQuery<Skill[]>(Endpoints.skillsGroup, { group_id: classroomId, status: "improved" });
-  const improve = useApiMutation(Endpoints.skillsImprove, { invalidates: [Endpoints.skillsGroup] });
-  const remove = useApiMutation(Endpoints.skillsDelete, { invalidates: [Endpoints.skillsGroup] });
+  const improve = useApiMutation(Endpoints.skillsImprove, { invalidates: [Endpoints.skillsGroup, Endpoints.skillsGroupStudents] });
+  const remove = useApiMutation(Endpoints.skillsDelete, { invalidates: [Endpoints.skillsGroup, Endpoints.skillsGroupStudents] });
   const query = status === "missing" ? missing : improved;
   const list = query.data ?? [];
   const selected = list.find((s) => s.id === selectedId) ?? list[0] ?? null;
-
-  const done = () => {
-    setConfirm(null);
-    setSelectedId(null);
-    toast.show(S.skills.moved);
-  };
+  // Postman: improve / delete take skill_ids and the student_ids they apply to.
+  const affected = useApiQuery<SkillStudent[]>(Endpoints.skillsGroupStudents, { group_id: classroomId, skill_id: selected?.id, status }, { enabled: Boolean(selected) });
+  const body = selected && affected.data ? { group_id: classroomId, skill_ids: [selected.id], student_ids: affected.data.map((s) => s.student_id) } : null;
+  const busy = !body || body.student_ids.length === 0;
 
   return (
     <>
-      <PageHeader
-        crumbs={crumbs}
-        title={S.skills.title}
-        actions={
-          status === "missing" && (
-            <Button variant="success" icon="check" disabled={!list.length} onClick={() => setConfirm("moveAll")}>
-              {S.skills.moveAll}
-            </Button>
-          )
-        }
-      />
+      <PageHeader crumbs={crumbs} title={S.skills.title} />
       <Tabs
         className="self-start"
         label={S.skills.title}
@@ -129,11 +117,26 @@ export default function SkillsPage() {
               </h2>
               <p className="whitespace-pre-line leading-8 text-ink-2">{selected.remedial_plan ?? S.skills.noPlan}</p>
               {status === "missing" && (
-                <Button variant="success" icon="check" loading={improve.isPending} onClick={() => improve.mutate({ group_id: classroomId, skill_ids: [selected.id] }, { onSuccess: done, onError: toast.error })}>
+                <Button
+                  variant="success"
+                  icon="check"
+                  disabled={busy}
+                  loading={improve.isPending}
+                  onClick={() =>
+                    body &&
+                    improve.mutate(body, {
+                      onSuccess: () => {
+                        setSelectedId(null);
+                        toast.show(S.skills.moved);
+                      },
+                      onError: toast.error,
+                    })
+                  }
+                >
                   {S.skills.move}
                 </Button>
               )}
-              <Button variant="danger" icon="trash" onClick={() => setConfirm("delete")}>
+              <Button variant="danger" icon="trash" disabled={busy} onClick={() => setConfirming(true)}>
                 {S.skills.deleteSkill}
               </Button>
             </Card>
@@ -143,17 +146,22 @@ export default function SkillsPage() {
 
       <StudentsDialog skill={studentsOf} status={status} classroomId={classroomId} onClose={() => setStudentsOf(null)} />
       <ConfirmDialog
-        open={confirm !== null}
-        onClose={() => setConfirm(null)}
-        loading={improve.isPending || remove.isPending}
-        danger={confirm === "delete"}
-        title={confirm === "delete" ? S.skills.deleteSkill : S.skills.moveAll}
-        body={confirm === "delete" ? selected?.name : S.skills.moveAll}
-        confirmLabel={confirm === "delete" ? S.common.delete : S.common.confirm}
+        open={confirming}
+        onClose={() => setConfirming(false)}
+        loading={remove.isPending}
+        title={S.skills.deleteSkill}
+        body={selected?.name}
+        confirmLabel={S.common.delete}
         onConfirm={() =>
-          confirm === "delete"
-            ? selected && remove.mutate({ group_id: classroomId, skill_ids: [selected.id] }, { onSuccess: () => { setConfirm(null); setSelectedId(null); toast.show(S.common.deletedSuccessfully); }, onError: toast.error })
-            : improve.mutate({ group_id: classroomId }, { onSuccess: done, onError: toast.error })
+          body &&
+          remove.mutate(body, {
+            onSuccess: () => {
+              setConfirming(false);
+              setSelectedId(null);
+              toast.show(S.common.deletedSuccessfully);
+            },
+            onError: toast.error,
+          })
         }
       />
     </>

@@ -52,6 +52,17 @@ export function formatHijri(value: string | Date | null | undefined): string {
   return new Intl.DateTimeFormat(HIJRI, { day: "numeric", month: "long", year: "numeric" }).format(date);
 }
 
+/** An exam's name: its title, else its kind (Taseese exams come without a title). */
+export function examTitle(exam: { title: string | null; category: "exam" | "homework" }, labels: { exam: string; homework: string }): string {
+  return exam.title?.trim() || labels[exam.category];
+}
+
+/** The current Hijri (Umm al-Qura) year, e.g. 1448. */
+export function currentHijriYear(): number {
+  const year = new Intl.DateTimeFormat("en-u-ca-islamic-umalqura-nu-latn", { year: "numeric" }).formatToParts(new Date()).find((p) => p.type === "year")?.value;
+  return Number(year) || 1448;
+}
+
 export function isSameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }

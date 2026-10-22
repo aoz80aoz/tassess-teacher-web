@@ -63,11 +63,25 @@ export async function api<T>(path: string, body?: ApiBody): Promise<T> {
   if (!response.ok || !json || json.success === false) {
     throw new ApiError(json?.message || S.errors.generic, response.status, json?.errors ?? null);
   }
-  return json.data as T;
+  // A few endpoints (students/getStudent) return the object itself, without
+  // the { success, data } envelope.
+  return ("success" in json ? json.data : json) as T;
 }
 
-/** POSTs and returns the response as a file (exports, invoices). */
-export async function apiFile(path: string, body?: ApiBody): Promise<Blob> {
+/** The file name from Content-Disposition (RFC 5987 `filename*` first). */
+function fileNameOf(response: Response): string | null {
+  const header = response.headers.get("content-disposition") ?? "";
+  const extended = /filename\*\s*=\s*(?:UTF-8'')?([^;]+)/i.exec(header)?.[1];
+  if (extended) {
+    try {
+      return decodeURIComponent(extended.trim().replace(/^"|"$/g, ""));
+    } catch {}
+  }
+  return /filename\s*=\s*"?([^";]+)"?/i.exec(header)?.[1]?.trim() || null;
+}
+
+/** POSTs and returns the response as a file (exports, templates), with the server's file name. */
+export async function apiFile(path: string, body?: ApiBody): Promise<{ blob: Blob; fileName: string | null }> {
   const response = await request(path, body);
   if (response.status === 401) onUnauthorized();
   if (!response.ok) {
@@ -77,7 +91,7 @@ export async function apiFile(path: string, body?: ApiBody): Promise<Blob> {
     } catch {}
     throw new ApiError(message, response.status);
   }
-  return response.blob();
+  return { blob: await response.blob(), fileName: fileNameOf(response) };
 }
 
 /** Builds multipart form data the way Laravel reads it (`key[0][field]`). */

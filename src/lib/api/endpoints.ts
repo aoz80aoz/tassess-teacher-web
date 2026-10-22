@@ -49,7 +49,6 @@ export const Endpoints = {
   classSessionQuestionsTaseese: "/teacher/class_sessions/questions/tasseese/questions",
   classSessionMarkAsPrepared: "/teacher/class_sessions/mark/as/prepared",
   classSessionMarkAsCompleted: "/teacher/class_sessions/mark/as/completed",
-  classSessionStart: "/teacher/class_sessions/start",
   classSessionMindMaps: "/teacher/class_sessions/show/mindmap",
   classSessionMindMapDelete: "/teacher/class_sessions/delete/mindmap",
   classSessionMindMapUpload: "/teacher/class_sessions/upload/mindmap",
@@ -133,6 +132,7 @@ export const Endpoints = {
   helpCenter: "/teacher/support-tickets",
   helpCenterDetails: "/teacher/support-tickets/show",
   createHelpCenterReply: "/teacher/support-tickets/reply",
+  rateHelpCenter: "/teacher/support-tickets/rate",
   createHelpCenter: "/teacher/support-tickets/create",
   helpCenterCategories: "/teacher/support-tickets/categories",
   transactions: "/teacher/my/transactions",
@@ -148,23 +148,12 @@ export const Endpoints = {
   exportPortfolioPdfFile: "/teacher/FilePortfolio/export/JsonFile",
   portfolioConstants: "/portfolio_constants",
   deletePortfolioFile: "/teacher/FilePortfolio/delete/file",
+
+  // Public catalog for the marketing site (GET, no API key)
+  frontStages: "/front/stages",
+  frontClassrooms: "/front/classrooms",
+  frontSubjects: "/front/subjects",
+  frontSocialMedia: "/front/social_media",
 } as const;
 
 export type Endpoint = (typeof Endpoints)[keyof typeof Endpoints];
-
-/** Endpoints a signed-out visitor may call. Everything else needs a session. */
-export const PUBLIC_ENDPOINTS: readonly string[] = [
-  Endpoints.nationalitiesAndRegions,
-  Endpoints.cities,
-  Endpoints.districts,
-  Endpoints.schools,
-  Endpoints.login,
-  Endpoints.sendTeacherOtp,
-  Endpoints.verifyTeacherOtp,
-  Endpoints.registerTeacher,
-  Endpoints.forgotPassword,
-  Endpoints.socialMedia,
-  Endpoints.pageShow,
-  Endpoints.appSettings,
-  Endpoints.portfolioConstants,
-];

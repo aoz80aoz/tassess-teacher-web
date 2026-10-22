@@ -140,7 +140,7 @@ function Current() {
   );
 }
 
-function Checkout({ view, loading, demo }: { view: CartView | undefined; loading: boolean; demo: boolean }) {
+function Checkout({ view, loading }: { view: CartView | undefined; loading: boolean }) {
   const toast = useToast();
   const [code, setCode] = useState("");
   const [gateway, setGateway] = useState<Gateway>("moyasar");
@@ -248,7 +248,6 @@ function Checkout({ view, loading, demo }: { view: CartView | undefined; loading
               </label>
             ))}
           </fieldset>
-          {demo && <p className="rounded-xl bg-warning-soft px-3 py-2 text-sm text-warning-ink">{SUB.demoPayment}</p>}
           <Button variant="accent" size="lg" loading={paying} onClick={pay}>
             {paying ? SUB.redirecting : SUB.checkout}
           </Button>
@@ -280,17 +279,9 @@ export default function SubscriptionsPage() {
       <div className="flex flex-wrap items-start gap-6">
         <div className="flex min-w-0 flex-[2_1_460px] flex-col gap-5">
           {tab === "new" ? <Catalog cart={cart.data} /> : <Current />}
-          <Card className="flex flex-col gap-2 border-accent-200 bg-accent-soft">
-            <strong>{SUB.featuresTitle}</strong>
-            <ul className="list-inside list-disc leading-8 text-accent-ink">
-              {SUB.features.map((f) => (
-                <li key={f}>{f}</li>
-              ))}
-            </ul>
-          </Card>
         </div>
         <div className="flex-[1_1_320px]">
-          <Checkout view={cart.data} loading={cart.isPending} demo={process.env.NEXT_PUBLIC_DEMO_MODE === "true"} />
+          <Checkout view={cart.data} loading={cart.isPending} />
         </div>
       </div>
     </>

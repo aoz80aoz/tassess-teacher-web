@@ -11,9 +11,11 @@ import { Endpoints } from "@/lib/api/endpoints";
 import { useApiMutation, useApiQuery } from "@/lib/api/hooks";
 import type { Exam, ExamResults } from "@/lib/api/types";
 import { saveCsv, stamp } from "@/lib/download";
-import { formatDate, formatTime } from "@/lib/format";
+import { examTitle, formatDate, formatTime } from "@/lib/format";
 import { fileUrl } from "@/lib/site";
 import { S } from "@/lib/strings";
+
+const EXAM_LABELS = { exam: S.assessments.kindExam, homework: S.assessments.kindHomework };
 
 export function AssessmentResults({ exam, onDeleted }: { exam: Exam; onDeleted: () => void }) {
   const toast = useToast();
@@ -62,7 +64,7 @@ export function AssessmentResults({ exam, onDeleted }: { exam: Exam; onDeleted: 
       <Card className="flex flex-wrap items-center gap-4">
         <span className="grid size-15 shrink-0 place-items-center rounded-2xl bg-danger-soft font-bold text-danger-ink">{exam.type === "file" ? S.common.pdf : S.assessments.typeTaseese}</span>
         <div className="flex min-w-0 flex-[1_1_220px] flex-col gap-1.5">
-          <strong className="text-lg">{exam.title}</strong>
+          <strong className="text-lg">{examTitle(exam, EXAM_LABELS)}</strong>
           <span className="text-sm text-muted">
             {exam.type === "file" ? S.assessments.fromTeacher : S.assessments.fromTaseeseBank} · {S.assessments.totalOf(String(total))}
           </span>
@@ -84,7 +86,7 @@ export function AssessmentResults({ exam, onDeleted }: { exam: Exam; onDeleted: 
               icon="share"
               onClick={async () => {
                 const url = exam.web_url!;
-                if (navigator.share) await navigator.share({ title: exam.title, url }).catch(() => null);
+                if (navigator.share) await navigator.share({ title: examTitle(exam, EXAM_LABELS), url }).catch(() => null);
                 else {
                   await navigator.clipboard.writeText(url);
                   toast.show(S.common.copied);
@@ -189,7 +191,7 @@ export function AssessmentResults({ exam, onDeleted }: { exam: Exam; onDeleted: 
         onClose={() => setDeleting(false)}
         loading={remove.isPending}
         title={S.assessments.deleteExam}
-        body={exam.title}
+        body={examTitle(exam, EXAM_LABELS)}
         onConfirm={() =>
           remove.mutate(
             { exam_id: exam.id },
@@ -220,7 +222,7 @@ export function AssessmentList({ exams, selectedId, onSelect, membersCount }: { 
           className={`flex w-full flex-col gap-2 rounded-2xl border-[1.5px] p-4 text-start ${e.id === selectedId ? "border-primary bg-primary-soft" : "border-line bg-white hover:border-primary"}`}
         >
           <span className="flex justify-between gap-2">
-            <strong>{e.title}</strong>
+            <strong>{examTitle(e, EXAM_LABELS)}</strong>
             <Chip>{e.type === "file" ? S.assessments.typeFile : S.assessments.typeTaseese}</Chip>
           </span>
           <span className="text-sm text-muted">{S.assessments.deadlineAt(formatDate(e.deadline))}</span>

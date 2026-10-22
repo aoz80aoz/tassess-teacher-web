@@ -188,11 +188,16 @@ export function PatternsDialog({ open, onClose, classroomId, studentId, current 
   const toast = useToast();
   const catalog = useApiQuery<LearningPattern[]>(Endpoints.teacherLearningPatterns, undefined, { enabled: open, staleTime: Infinity });
   const [selected, setSelected] = useState<number[]>([]);
+  const [mainId, setMainId] = useState<number | null>(null);
   const save = useApiMutation(Endpoints.teacherLearningPatternsUpdateStudent, { invalidates: [Endpoints.getStudent, Endpoints.showGroup] });
   useEffect(() => {
+    if (!open) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (open) setSelected(current.map((p) => p.id));
+    setSelected(current.map((p) => p.id));
+    setMainId(current.find((p) => p.is_main)?.id ?? null);
   }, [open, current]);
+  // One main pattern among the chosen ones (Postman: patterns [{ id, is_main }]).
+  const main = mainId !== null && selected.includes(mainId) ? mainId : selected[0] ?? null;
   return (
     <Dialog
       open={open}
@@ -204,7 +209,7 @@ export function PatternsDialog({ open, onClose, classroomId, studentId, current 
             loading={save.isPending}
             onClick={() =>
               save.mutate(
-                { group_id: classroomId, student_id: studentId, patterns: selected },
+                { student_id: studentId, group_id: classroomId, patterns: selected.map((id) => ({ id, is_main: id === main })) },
                 {
                   onSuccess: () => {
                     toast.show(S.common.savedSuccessfully);
@@ -230,19 +235,30 @@ export function PatternsDialog({ open, onClose, classroomId, studentId, current 
           {(catalog.data ?? []).map((p) => {
             const on = selected.includes(p.id);
             return (
-              <button
-                key={p.id}
-                type="button"
-                aria-pressed={on}
-                onClick={() => setSelected((s) => (on ? s.filter((x) => x !== p.id) : [...s, p.id]))}
-                className={clsx("flex items-start gap-3 rounded-2xl border-[1.5px] p-4 text-start", on ? "border-primary bg-primary-soft" : "border-line bg-white")}
-              >
-                <span className={clsx("mt-0.5 grid size-6 shrink-0 place-items-center rounded-md border-[1.5px]", on ? "border-primary bg-primary text-white" : "border-line-2")}>{on && <Icon name="check" className="size-4" />}</span>
-                <span>
-                  <strong className="block">{p.name}</strong>
-                  {p.description && <span className="text-sm text-muted">{p.description}</span>}
-                </span>
-              </button>
+              <div key={p.id} className={clsx("flex flex-wrap items-center gap-2 rounded-2xl border-[1.5px] p-2", on ? "border-primary bg-primary-soft" : "border-line bg-white")}>
+                <button
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setSelected((s) => (on ? s.filter((x) => x !== p.id) : [...s, p.id]))}
+                  className="flex min-w-0 flex-[1_1_220px] items-start gap-3 rounded-xl p-2 text-start"
+                >
+                  <span className={clsx("mt-0.5 grid size-6 shrink-0 place-items-center rounded-md border-[1.5px]", on ? "border-primary bg-primary text-white" : "border-line-2")}>{on && <Icon name="check" className="size-4" />}</span>
+                  <span>
+                    <strong className="block">{p.name}</strong>
+                    {p.description && <span className="text-sm text-muted">{p.description}</span>}
+                  </span>
+                </button>
+                {on && (
+                  <button
+                    type="button"
+                    aria-pressed={main === p.id}
+                    onClick={() => setMainId(p.id)}
+                    className={clsx("min-h-11 rounded-xl px-3 text-sm font-semibold", main === p.id ? "bg-primary text-white" : "bg-white text-primary")}
+                  >
+                    {S.student.mainPattern}
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>

@@ -13,7 +13,8 @@ const LINKS = [
   { href: "/#how", label: S.marketing.navHow },
   { href: "/#portfolio", label: S.marketing.navPortfolio },
   { href: "/#pricing", label: S.marketing.navPricing },
-  { href: "/faq", label: S.marketing.navFaq },
+  { href: "/#faq", label: S.marketing.navFaq },
+  { href: "/#about", label: S.marketing.aboutKicker },
 ];
 
 export function MarketingHeader() {

@@ -3,28 +3,27 @@
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
-import { isValidSaudiPhone, PhoneField } from "@/components/ui/Field";
+import { CountryPhoneField, intlPhone, isValidIntlPhone, type IntlPhone } from "@/components/ui/Field";
 import { api, errorMessage } from "@/lib/api/client";
 import { Endpoints } from "@/lib/api/endpoints";
 import { S } from "@/lib/strings";
-import { fullPhone } from "./auth-api";
 
 export function ForgotPasswordForm() {
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState<IntlPhone>({ code: "+966", digits: "" });
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!isValidSaudiPhone(phone)) {
-      setError(S.errors.invalidPhone);
+    if (!isValidIntlPhone(phone)) {
+      setError(S.errors.invalidPhoneIntl);
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      await api(Endpoints.forgotPassword, { phone: fullPhone(phone) });
+      await api(Endpoints.forgotPassword, { phone: intlPhone(phone) });
       setDone(true);
     } catch (err) {
       setError(errorMessage(err));
@@ -45,7 +44,7 @@ export function ForgotPasswordForm() {
         </p>
       ) : (
         <>
-          <PhoneField label={S.auth.phone} value={phone} onChange={setPhone} placeholder={S.auth.phonePlaceholder} error={error} autoFocus />
+          <CountryPhoneField label={S.auth.phone} value={phone} onChange={setPhone} placeholder={S.auth.phonePlaceholder} error={error} autoFocus />
           <Button type="submit" size="lg" block loading={loading}>
             {S.auth.forgotButton}
           </Button>

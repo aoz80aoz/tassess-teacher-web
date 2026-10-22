@@ -48,7 +48,7 @@ function QuestionsTab({ session, onChanged }: { session: Session; onChanged: () 
   const query = useApiQuery<Question[]>(Endpoints.classSessionQuestions, { session_id: session.id });
   const [editing, setEditing] = useState<Question | null | "new">(null);
   const [deleting, setDeleting] = useState<Question | null>(null);
-  const importTaseese = useApiMutation<Question[]>(Endpoints.classSessionQuestionsTaseese, { invalidates: [Endpoints.classSessionQuestions] });
+  const importTaseese = useApiMutation<Question[] | null>(Endpoints.classSessionQuestionsTaseese, { invalidates: [Endpoints.classSessionQuestions] });
   const remove = useApiMutation(Endpoints.classSessionQuestionsDelete, { invalidates: [Endpoints.classSessionQuestions] });
   const list = query.data ?? [];
 
@@ -65,8 +65,9 @@ function QuestionsTab({ session, onChanged }: { session: Session; onChanged: () 
               importTaseese.mutate(
                 { session_id: session.id },
                 {
+                  // The API answers data: null; a returned list gives the count.
                   onSuccess: (added) => {
-                    toast.show(S.prep.importDone(added.length));
+                    toast.show(Array.isArray(added) ? S.prep.importDone(added.length) : S.prep.importDoneAll);
                     onChanged();
                   },
                   onError: toast.error,

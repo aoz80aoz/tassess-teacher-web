@@ -3,7 +3,7 @@ import { useId, type ComponentProps, type ReactNode } from "react";
 import { Icon } from "./Icon";
 
 const control =
-  "w-full rounded-xl border-[1.5px] border-line bg-white px-3.5 text-base text-ink outline-none transition-colors placeholder:text-muted focus:border-primary disabled:bg-soft aria-[invalid=true]:border-danger";
+  "w-full rounded-xl border-[1.5px] border-line bg-white px-3.5 text-base text-ink outline-none transition-colors placeholder:text-muted focus:border-primary focus:ring-3 focus:ring-primary/15 disabled:bg-soft aria-[invalid=true]:border-danger";
 
 function Wrapper({ id, label, error, hint, children, className }: { id: string; label?: ReactNode; error?: string | null; hint?: ReactNode; children: ReactNode; className?: string }) {
   return (
@@ -69,7 +69,7 @@ export function PhoneField({ label, error, value, onChange, id, ...rest }: Field
   const fieldId = id ?? auto;
   return (
     <Wrapper id={fieldId} label={label} error={error}>
-      <div className={clsx("flex min-h-12 items-center rounded-xl border-[1.5px] bg-white focus-within:border-primary", error ? "border-danger" : "border-line")} dir="ltr">
+      <div className={clsx("flex min-h-12 items-center rounded-xl border-[1.5px] bg-white transition-colors focus-within:border-primary focus-within:ring-3 focus-within:ring-primary/15", error ? "border-danger" : "border-line")} dir="ltr">
         <span className="border-e border-line px-3 font-semibold text-ink-2">+966</span>
         <input
           id={fieldId}
@@ -79,6 +79,66 @@ export function PhoneField({ label, error, value, onChange, id, ...rest }: Field
           className="min-w-0 flex-1 bg-transparent px-3 text-base outline-none"
           value={value}
           onChange={(e) => onChange(e.target.value.replace(/\D/g, "").replace(/^0/, "").slice(0, 9))}
+          {...rest}
+        />
+      </div>
+    </Wrapper>
+  );
+}
+
+/** The app's country codes (country_code_prefix.dart). */
+export const COUNTRY_CODES = [
+  { code: "+966", flag: "🇸🇦" },
+  { code: "+971", flag: "🇦🇪" },
+  { code: "+965", flag: "🇰🇼" },
+  { code: "+974", flag: "🇶🇦" },
+  { code: "+968", flag: "🇴🇲" },
+  { code: "+973", flag: "🇧🇭" },
+  { code: "+961", flag: "🇱🇧" },
+  { code: "+962", flag: "🇯🇴" },
+  { code: "+20", flag: "🇪🇬" },
+] as const;
+
+export interface IntlPhone {
+  code: string;
+  digits: string;
+}
+
+/** Saudi numbers are 5XXXXXXXX; other countries 7 to 12 digits. */
+export function isValidIntlPhone({ code, digits }: IntlPhone) {
+  return code === "+966" ? /^5\d{8}$/.test(digits) : /^\d{7,12}$/.test(digits);
+}
+
+/** The full number the API takes, e.g. +966512345678 (leading zeros dropped, like the app). */
+export const intlPhone = ({ code, digits }: IntlPhone) => `${code}${digits.replace(/^0+/, "")}`;
+
+/** Phone with the app's country-code picker. */
+export function CountryPhoneField({ label, error, value, onChange, id, wrapperClassName, ...rest }: FieldProps & { value: IntlPhone; onChange: (v: IntlPhone) => void } & Omit<ComponentProps<"input">, "value" | "onChange">) {
+  const auto = useId();
+  const fieldId = id ?? auto;
+  return (
+    <Wrapper id={fieldId} label={label} error={error} className={wrapperClassName}>
+      <div className={clsx("flex min-h-12 items-center rounded-xl border-[1.5px] bg-white transition-colors focus-within:border-primary focus-within:ring-3 focus-within:ring-primary/15", error ? "border-danger" : "border-line")} dir="ltr">
+        <select
+          aria-label={label ? `${String(label)} - code` : undefined}
+          value={value.code}
+          onChange={(e) => onChange({ ...value, code: e.target.value })}
+          className="h-full min-h-11 rounded-s-xl border-e border-line bg-transparent ps-2.5 pe-1 font-semibold text-ink-2 outline-none"
+        >
+          {COUNTRY_CODES.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.flag} {c.code}
+            </option>
+          ))}
+        </select>
+        <input
+          id={fieldId}
+          inputMode="numeric"
+          autoComplete="tel-national"
+          aria-invalid={Boolean(error) || undefined}
+          className="min-w-0 flex-1 bg-transparent px-3 text-base outline-none"
+          value={value.digits}
+          onChange={(e) => onChange({ ...value, digits: e.target.value.replace(/\D/g, "").slice(0, 12) })}
           {...rest}
         />
       </div>

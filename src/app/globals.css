@@ -64,7 +64,11 @@ body {
   }
 }
 
-:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
+/* In the base layer so a field's own `outline-none` (it shows its focus
+   with its border) wins over this default. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
 }

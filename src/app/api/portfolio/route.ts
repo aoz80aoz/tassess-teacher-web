@@ -3,7 +3,6 @@ import type { PortfolioPayload } from "@/lib/api/types";
 import { callApiJson, readToken } from "@/server/backend";
 import { serverConfig } from "@/server/config";
 import { S } from "@/lib/strings";
-import { getPortfolio, isMockAuthorized, setPortfolio } from "@/server/mocks/handlers";
 
 // The portfolio is one JSON file on the server (same format as the app).
 // Reading it means fetching a storage URL, and saving it means a multipart
@@ -13,10 +12,6 @@ const ok = (data: unknown) => Response.json({ success: true, message: null, erro
 const fail = (message: string, status: number) => Response.json({ success: false, message, errors: null, data: null }, { status });
 
 export async function GET() {
-  if (serverConfig.useMocks) {
-    if (!isMockAuthorized(await readToken())) return fail("Unauthenticated.", 401);
-    return ok(getPortfolio());
-  }
   const { ok: found, status, json } = await callApiJson<{ file_portfolio: string | null }>(Endpoints.getPortfolioJsonFile, {});
   if (status === 401) return fail("Unauthenticated.", 401);
   const url = found ? json.data?.file_portfolio : null;
@@ -35,11 +30,6 @@ export async function POST(request: Request) {
   const payload = (await request.json().catch(() => null)) as PortfolioPayload | null;
   if (!payload?.achievement) return fail(S.portfolio.invalidFormat, 422);
   const token = await readToken();
-  if (serverConfig.useMocks) {
-    if (!isMockAuthorized(token)) return fail("Unauthenticated.", 401);
-    setPortfolio(payload);
-    return ok(null);
-  }
   const form = new FormData();
   form.append("file", new Blob([JSON.stringify(payload)], { type: "application/json" }), `achievement_${Date.now()}.json`);
   const upstream = await fetch(`${serverConfig.apiBaseUrl}${Endpoints.uploadPortfolioJsonFile}`, {

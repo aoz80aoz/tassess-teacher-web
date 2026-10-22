@@ -5,13 +5,14 @@ import { S } from "@/lib/strings";
 // Login and register go to our own /api/auth routes, which keep the token
 // in an httpOnly cookie.
 
-export async function authPost(path: "login" | "register" | "logout", body: Record<string, unknown> = {}): Promise<{ teacher: Teacher } | null> {
+export async function authPost(path: "login" | "register" | "logout", body: Record<string, unknown> | FormData = {}): Promise<{ teacher: Teacher } | null> {
+  const isForm = body instanceof FormData;
   let response: Response;
   try {
     response = await fetch(`/api/auth/${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(body),
+      headers: isForm ? { Accept: "application/json" } : { "Content-Type": "application/json", Accept: "application/json" },
+      body: isForm ? body : JSON.stringify(body),
     });
   } catch {
     throw new ApiError(S.errors.network, 0);
@@ -25,5 +26,3 @@ export async function authPost(path: "login" | "register" | "logout", body: Reco
 export function safeNext(next: string | null): string {
   return next && next.startsWith("/app") ? next : "/app";
 }
-
-export const fullPhone = (digits: string) => `+966${digits}`;

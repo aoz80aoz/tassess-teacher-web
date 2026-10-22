@@ -12,8 +12,9 @@ import { useApiMutation } from "@/lib/api/hooks";
 import type { Question } from "@/lib/api/types";
 import { S } from "@/lib/strings";
 
-// One student answers the session's questions against the clock; the
-// result is saved as points (correct = positive, wrong = negative).
+// One student answers the session's questions against the clock. The live
+// API requires the totals positive_points / negative_points (the app's
+// format); the per-question list from Postman is sent along with them.
 
 const SECONDS_PER_QUESTION = 60;
 
@@ -51,8 +52,9 @@ export function QuizDialog({ open, onClose, sessionId, questions, students }: { 
   const chosen = studentId || String(students[0]?.id ?? "");
   const q = questions[index];
   const correct = questions.filter((x) => answers[x.id] === x.correct_answer);
-  const wrong = questions.filter((x) => answers[x.id] !== undefined && answers[x.id] !== x.correct_answer);
-  const points = (list: Question[]) => Math.round(list.reduce((n, x) => n + Number(x.points), 0));
+  const answered = questions
+    .filter((x) => answers[x.id] !== undefined)
+    .map((x) => ({ question_id: x.id, positive_points: answers[x.id] === x.correct_answer ? 1 : 0, negative_points: answers[x.id] === x.correct_answer ? 0 : 1 }));
 
   return (
     <Dialog open={open} onClose={onClose} title={S.run.quizTitle} size="lg">
@@ -79,10 +81,16 @@ export function QuizDialog({ open, onClose, sessionId, questions, students }: { 
           <Button
             icon="save"
             loading={save.isPending}
-            disabled={points(correct) + points(wrong) === 0}
+            disabled={answered.length === 0}
             onClick={() =>
               save.mutate(
-                { session_id: sessionId, student_id: Number(chosen), positive_points: points(correct), negative_points: points(wrong) },
+                {
+                  student_id: Number(chosen),
+                  session_id: sessionId,
+                  positive_points: answered.reduce((n, a) => n + a.positive_points, 0),
+                  negative_points: answered.reduce((n, a) => n + a.negative_points, 0),
+                  questions: answered,
+                },
                 {
                   onSuccess: () => {
                     toast.show(S.run.quizSaved);

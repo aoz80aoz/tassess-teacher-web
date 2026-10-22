@@ -5,17 +5,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
-import { isValidSaudiPhone, PhoneField, TextField } from "@/components/ui/Field";
+import { CountryPhoneField, intlPhone, isValidIntlPhone, TextField, type IntlPhone } from "@/components/ui/Field";
 import { errorMessage } from "@/lib/api/client";
 import { track } from "@/lib/analytics";
 import { S } from "@/lib/strings";
-import { authPost, fullPhone, safeNext } from "./auth-api";
-import { DemoHint } from "./DemoHint";
+import { authPost, safeNext } from "./auth-api";
 
-export function LoginForm({ demo }: { demo: boolean }) {
+export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState<IntlPhone>({ code: "+966", digits: "" });
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ phone?: string; password?: string; form?: string }>({});
@@ -24,13 +23,13 @@ export function LoginForm({ demo }: { demo: boolean }) {
   async function submit(e: FormEvent) {
     e.preventDefault();
     const next: typeof errors = {};
-    if (!isValidSaudiPhone(phone)) next.phone = S.errors.invalidPhone;
+    if (!isValidIntlPhone(phone)) next.phone = S.errors.invalidPhoneIntl;
     if (password.length < 6) next.password = S.errors.passwordShort;
     setErrors(next);
     if (Object.keys(next).length) return;
     setLoading(true);
     try {
-      await authPost("login", { phone: fullPhone(phone), password });
+      await authPost("login", { phone: intlPhone(phone), password });
       track("login", { method: "phone" });
       router.replace(safeNext(params.get("next")));
       router.refresh();
@@ -46,8 +45,7 @@ export function LoginForm({ demo }: { demo: boolean }) {
         <h1 className="text-[26px] font-bold">{S.auth.loginTitle}</h1>
         <p className="text-muted">{S.auth.loginSubtitle}</p>
       </div>
-      <DemoHint visible={demo} />
-      <PhoneField label={S.auth.phone} value={phone} onChange={setPhone} placeholder={S.auth.phonePlaceholder} error={errors.phone} autoFocus />
+      <CountryPhoneField label={S.auth.phone} value={phone} onChange={setPhone} placeholder={S.auth.phonePlaceholder} error={errors.phone} autoFocus />
       <div className="relative">
         <TextField
           label={S.auth.password}

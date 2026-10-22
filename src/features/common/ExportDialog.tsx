@@ -44,7 +44,8 @@ export function ExportDialog({
       // Both periods = no `phase` (both + totals); one = that period.
       const body: Record<string, unknown> = { group_id: classroomId, students_ids: studentIds };
       if (p1 !== p2) body.phase = p1 ? 1 : 2;
-      saveBlob(await apiFile(Endpoints.evaluationElementsExport, body), `${filePrefix}_grades_${stamp()}.csv`);
+      const { blob, fileName } = await apiFile(Endpoints.evaluationElementsExport, body);
+      saveBlob(blob, fileName ?? `${filePrefix}_grades_${stamp()}.xlsx`);
       toast.show(S.export.downloaded);
       onClose();
     } catch (e) {

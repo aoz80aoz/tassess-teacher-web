@@ -1,5 +1,5 @@
 import { ApiError } from "@/lib/api/client";
-import type { Envelope, PortfolioFolder, PortfolioItem, PortfolioPayload } from "@/lib/api/types";
+import type { DailyReportData, DailyReportField, Envelope, PortfolioFolder, PortfolioItem, PortfolioPayload, Teacher } from "@/lib/api/types";
 import { S } from "@/lib/strings";
 
 // The portfolio is one JSON document (the app's achievement format), read
@@ -9,13 +9,48 @@ export const DEFAULT_FOLDERS: readonly string[] = S.portfolio.defaultFolders;
 
 export const newId = () => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
 
+const REPORT_FIELDS: DailyReportField[] = [
+  "subject_execution_status",
+  "lesson_goals_achievement",
+  "average_participation",
+  "average_comprehension",
+  "educational_tools",
+  "teaching_method",
+  "immediate_interventions",
+  "difficulties_and_challenges",
+  "general_notes",
+];
+
+/** Reads daily_report_data in the app's shape; anything else (older web files, missing parts) gives empty fields. */
+export function readDailyReport(raw: unknown): { fields: Record<DailyReportField, string>; principal: string } {
+  const obj = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const rf = obj.report_fields && typeof obj.report_fields === "object" ? (obj.report_fields as Record<string, unknown>) : {};
+  const sig = obj.signatures && typeof obj.signatures === "object" ? (obj.signatures as Record<string, unknown>) : {};
+  const text = (v: unknown) => (typeof v === "string" ? v : Array.isArray(v) ? v.join(S.portfolio.listSeparator) : "");
+  return {
+    fields: Object.fromEntries(REPORT_FIELDS.map((k) => [k, text(rf[k])])) as Record<DailyReportField, string>,
+    principal: text(sig.principal_name),
+  };
+}
+
+/** Builds daily_report_data exactly like the app, with the school and teacher from the account. */
+export function buildDailyReport(teacher: Teacher | undefined, fields: Record<DailyReportField, string>, principal: string): DailyReportData {
+  const region = teacher?.school?.region?.name ?? "";
+  return {
+    report_title: S.portfolio.dailyReportTitle,
+    school_info: { ministry: S.portfolio.ministry, school_name: teacher?.school?.name ?? "", region_name: region, region: { name: region } },
+    report_fields: fields,
+    signatures: { teacher_name: teacher?.name ?? "", principal_name: principal },
+  };
+}
+
 export function emptyPortfolio(teacherId: string): PortfolioPayload {
   return {
     teacher_id: teacherId,
     achievement: {
       title: S.portfolio.defaultTitle,
       folders: DEFAULT_FOLDERS.map((name) => ({ id: newId(), name, subFolders: [], items: [] })),
-      daily_report_data: {},
+      daily_report_data: buildDailyReport(undefined, readDailyReport(null).fields, ""),
     },
   };
 }

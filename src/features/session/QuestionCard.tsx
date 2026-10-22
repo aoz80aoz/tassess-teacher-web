@@ -14,9 +14,6 @@ export function QuestionCard({ question, index, actions }: { question: Question;
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-wrap gap-1.5">
           <Chip>{S.prep.questionN(index + 1)}</Chip>
-          <Chip tone="neutral">{question.question_type === "true_false" ? S.prep.trueFalse : S.prep.multipleChoice}</Chip>
-          {question.degree != null && <Chip tone="neutral">{S.prep.degree(question.degree)}</Chip>}
-          <Chip tone="neutral">{S.prep.points(Number(question.points))}</Chip>
         </div>
         {actions && <div className="flex shrink-0 gap-1.5">{actions}</div>}
       </div>

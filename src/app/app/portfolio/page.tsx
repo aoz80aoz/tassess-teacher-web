@@ -12,14 +12,15 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { IndeterminateBar } from "@/components/ui/Progress";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
-import { countItems, emptyPortfolio, loadPortfolio, newId, savePortfolio } from "@/features/portfolio/portfolio-store";
+import { buildDailyReport, countItems, emptyPortfolio, loadPortfolio, newId, readDailyReport, savePortfolio } from "@/features/portfolio/portfolio-store";
 import { useTeacher } from "@/features/shell/use-teacher";
-import { apiFile } from "@/lib/api/client";
+import { api, apiFile } from "@/lib/api/client";
 import { Endpoints } from "@/lib/api/endpoints";
 import { useApiQuery } from "@/lib/api/hooks";
-import type { PortfolioConstants, PortfolioFolder, PortfolioItem, PortfolioPayload } from "@/lib/api/types";
+import type { DailyReportData, DailyReportField, PortfolioConstants, PortfolioFolder, PortfolioItem, PortfolioPayload, Teacher } from "@/lib/api/types";
 import { saveBlob, stamp } from "@/lib/download";
-import { formatDate } from "@/lib/format";
+import { fileSize, formatDate } from "@/lib/format";
+import { fileUrl } from "@/lib/site";
 import { S } from "@/lib/strings";
 
 const P = S.portfolio;
@@ -39,16 +40,36 @@ function mapFolders(folders: PortfolioFolder[], id: string, change: (f: Portfoli
   });
 }
 
-function FixedDataDialog({ open, onClose, value, onSave }: { open: boolean; onClose: () => void; value: Record<string, string>; onSave: (v: Record<string, string>) => void }) {
+// Each constants section fills one field of the app's report_fields; the
+// order and the single / multiple choices follow the app's form.
+const FIXED_FIELDS: { field: DailyReportField; section?: string; multi?: boolean; label?: string }[] = [
+  { field: "subject_execution_status", section: "lesson_execution_status" },
+  { field: "lesson_goals_achievement", section: "objectives_achievement" },
+  { field: "average_participation", section: "participation_average" },
+  { field: "average_comprehension", section: "understanding_level" },
+  { field: "educational_tools", section: "educational_tools", multi: true },
+  { field: "teaching_method", section: "teaching_strategy", multi: true },
+  { field: "difficulties_and_challenges", label: P.challenges },
+  { field: "immediate_interventions", section: "immediate_interventions", multi: true },
+  { field: "general_notes", label: P.generalNotes },
+];
+
+const splitList = (v: string) => (v ? v.split(/[،,]/).map((x) => x.trim()).filter(Boolean) : []);
+
+function FixedDataDialog({ open, onClose, value, teacher, onSave }: { open: boolean; onClose: () => void; value: unknown; teacher: Teacher | undefined; onSave: (v: DailyReportData) => void }) {
   const constants = useApiQuery<PortfolioConstants>(Endpoints.portfolioConstants, undefined, { enabled: open, staleTime: Infinity });
-  const [draft, setDraft] = useState<Record<string, string[]>>({});
+  const [fields, setFields] = useState(() => readDailyReport(value).fields);
+  const [principal, setPrincipal] = useState("");
   useEffect(() => {
     if (!open) return;
-    // Multi-select sections are stored comma-joined (the app's daily_report_data).
+    const current = readDailyReport(value);
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDraft(Object.fromEntries(Object.entries(value).map(([k, v]) => [k, v ? v.split(P.listSeparator.trim()).map((x) => x.trim()) : []])));
-  }, [open, value]);
-  const sections = constants.data ? Object.entries(constants.data.sections) : [];
+    setFields(current.fields);
+    setPrincipal(current.principal || teacher?.manager_name || "");
+  }, [open, value, teacher]);
+  const set = (field: DailyReportField, v: string) => setFields((f) => ({ ...f, [field]: v }));
+  const options = (section: string) => (constants.data?.grouped_constants[section] ?? []).map((c) => c.content);
+
   return (
     <Dialog
       open={open}
@@ -60,7 +81,7 @@ function FixedDataDialog({ open, onClose, value, onSave }: { open: boolean; onCl
           <Button
             disabled={!constants.data}
             onClick={() => {
-              onSave(Object.fromEntries(Object.entries(draft).map(([k, v]) => [k, v.join(P.listSeparator)])));
+              onSave(buildDailyReport(teacher, fields, principal.trim()));
               onClose();
             }}
           >
@@ -78,41 +99,101 @@ function FixedDataDialog({ open, onClose, value, onSave }: { open: boolean; onCl
         <ErrorState error={constants.error} onRetry={() => constants.refetch()} />
       ) : (
         <div className="flex flex-col gap-5">
-          {sections.map(([key, label]) => (
-            <fieldset key={key} className="flex flex-col gap-1">
-              <legend className="mb-1 font-semibold">{label}</legend>
-              <div className="flex flex-wrap gap-x-6">
-                {(constants.data!.grouped_constants[key] ?? []).map((c) => (
-                  <Checkbox
-                    key={c.id}
-                    label={c.content}
-                    checked={(draft[key] ?? []).includes(c.content)}
-                    onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.checked ? [...(d[key] ?? []), c.content] : (d[key] ?? []).filter((x) => x !== c.content) }))}
-                  />
-                ))}
-              </div>
-            </fieldset>
-          ))}
+          <TextField label={P.principalName} value={principal} onChange={(e) => setPrincipal(e.target.value)} />
+          {FIXED_FIELDS.map(({ field, section, multi, label }) => {
+            if (!section) return <TextArea key={field} label={label} rows={2} value={fields[field]} onChange={(e) => set(field, e.target.value)} />;
+            const list = options(section);
+            if (!list.length) return null;
+            const title = constants.data!.sections[section] ?? section;
+            if (!multi) {
+              return (
+                <Select key={field} label={title} value={fields[field]} onChange={(e) => set(field, e.target.value)}>
+                  <option value="">{P.choose}</option>
+                  {/* Keep a saved value the constants no longer list. */}
+                  {fields[field] && !list.includes(fields[field]) && <option value={fields[field]}>{fields[field]}</option>}
+                  {list.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </Select>
+              );
+            }
+            const chosen = splitList(fields[field]);
+            return (
+              <fieldset key={field} className="flex flex-col gap-1">
+                <legend className="mb-1 font-semibold">{title}</legend>
+                <div className="flex flex-wrap gap-x-6">
+                  {list.map((o) => (
+                    <Checkbox
+                      key={o}
+                      label={o}
+                      checked={chosen.includes(o)}
+                      onChange={(e) => set(field, (e.target.checked ? [...chosen, o] : chosen.filter((x) => x !== o)).join(P.listSeparator))}
+                    />
+                  ))}
+                </div>
+              </fieldset>
+            );
+          })}
         </div>
       )}
     </Dialog>
   );
 }
 
+const ACCEPT: Record<Exclude<PortfolioItem["type"], "text">, string> = { image: "image/*", video: "video/*", pdf: "application/pdf" };
+
+interface UploadedFile {
+  uuid: string;
+  file_name: string;
+  file_path: string;
+}
+
+/** Media goes up with `upload/file` (`files[]`); the item keeps its file_path as `url`, like the app. */
+async function uploadMedia(file: File): Promise<UploadedFile> {
+  const form = new FormData();
+  form.append("files[]", file);
+  const data = await api<UploadedFile | UploadedFile[]>(Endpoints.uploadTeacherPortfolioFile, form);
+  const uploaded = Array.isArray(data) ? data[0] : data;
+  if (!uploaded?.file_path) throw new Error(S.errors.generic);
+  return uploaded;
+}
+
 function ItemDialog({ open, onClose, onAdd }: { open: boolean; onClose: () => void; onAdd: (item: PortfolioItem) => void }) {
-  const [form, setForm] = useState<{ type: PortfolioItem["type"]; title: string; content: string; url: string }>({ type: "text", title: "", content: "", url: "" });
+  const toast = useToast();
+  const [form, setForm] = useState<{ type: PortfolioItem["type"]; title: string; content: string }>({ type: "text", title: "", content: "" });
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
+    if (!open) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (open) setForm({ type: "text", title: "", content: "", url: "" });
+    setForm({ type: "text", title: "", content: "" });
+    setFile(null);
+    setError(null);
   }, [open]);
-  function submit() {
-    if (!form.title.trim() || (form.type === "text" ? !form.content.trim() : !/^https?:\/\//.test(form.url))) {
+  async function submit() {
+    if (!form.title.trim() || (form.type === "text" ? !form.content.trim() : !file)) {
       setError(S.errors.required);
       return;
     }
-    onAdd({ type: form.type, title: form.title.trim(), note_date: new Date().toISOString(), ...(form.type === "text" ? { content: form.content.trim() } : { url: form.url.trim() }) });
-    onClose();
+    const base = { type: form.type, title: form.title.trim(), note_date: new Date().toISOString() };
+    if (form.type === "text" || !file) {
+      onAdd({ ...base, content: form.content.trim() });
+      onClose();
+      return;
+    }
+    setUploading(true);
+    try {
+      const uploaded = await uploadMedia(file);
+      onAdd({ ...base, url: fileUrl(uploaded.file_path) ?? uploaded.file_path });
+      onClose();
+    } catch (e) {
+      toast.error(e);
+    } finally {
+      setUploading(false);
+    }
   }
   return (
     <Dialog
@@ -121,7 +202,9 @@ function ItemDialog({ open, onClose, onAdd }: { open: boolean; onClose: () => vo
       title={P.addItem}
       footer={
         <>
-          <Button onClick={submit}>{S.common.add}</Button>
+          <Button loading={uploading} onClick={submit}>
+            {S.common.add}
+          </Button>
           <Button variant="soft" onClick={onClose}>
             {S.common.cancel}
           </Button>
@@ -130,7 +213,14 @@ function ItemDialog({ open, onClose, onAdd }: { open: boolean; onClose: () => vo
     >
       <div className="flex flex-col gap-4">
         <TextField label={P.itemTitle} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} autoFocus />
-        <Select label={P.itemType} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as PortfolioItem["type"] })}>
+        <Select
+          label={P.itemType}
+          value={form.type}
+          onChange={(e) => {
+            setForm({ ...form, type: e.target.value as PortfolioItem["type"] });
+            setFile(null);
+          }}
+        >
           {(["text", "image", "video", "pdf"] as const).map((t) => (
             <option key={t} value={t}>
               {P.typeLabel[t]}
@@ -140,7 +230,21 @@ function ItemDialog({ open, onClose, onAdd }: { open: boolean; onClose: () => vo
         {form.type === "text" ? (
           <TextArea label={P.itemContent} rows={5} value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} />
         ) : (
-          <TextField label={P.itemUrl} dir="ltr" placeholder="https://" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />
+          <label className="flex cursor-pointer flex-col items-center gap-1.5 rounded-2xl border-[1.5px] border-dashed border-line-2 p-6 text-center hover:border-primary">
+            <span className="text-sm font-medium text-ink-2">{P.itemFile}</span>
+            <span className="font-semibold">{file ? file.name : P.chooseFile}</span>
+            {file && <span className="text-sm text-muted">{fileSize(file.size)}</span>}
+            <input
+              type="file"
+              accept={ACCEPT[form.type]}
+              className="sr-only"
+              onChange={(e) => {
+                const picked = e.target.files?.[0] ?? null;
+                setFile(picked);
+                if (picked && !form.title.trim()) setForm((f) => ({ ...f, title: picked.name.replace(/\.[^.]+$/, "") }));
+              }}
+            />
+          </label>
         )}
         {error && <p className="text-sm text-danger">{error}</p>}
       </div>
@@ -202,11 +306,16 @@ export default function PortfolioPage() {
   }
 
   async function exportPdf() {
+    if (!doc) return;
     setExporting(true);
     try {
-      // The server renders its stored copy, so unsaved changes go up first.
+      // Unsaved changes are synced too, so the cloud copy matches the PDF.
       if (dirty) await save();
-      saveBlob(await apiFile(Endpoints.exportPortfolioPdfFile), `portfolio_${stamp()}.pdf`);
+      // Postman: the portfolio JSON goes up as `file`, the PDF comes back.
+      const form = new FormData();
+      form.append("file", new Blob([JSON.stringify(doc)], { type: "application/json" }), `achievement_${Date.now()}.json`);
+      const { blob, fileName } = await apiFile(Endpoints.exportPortfolioPdfFile, form);
+      saveBlob(blob, fileName ?? `portfolio_${stamp()}.pdf`);
       toast.show(S.export.downloaded);
     } catch (e) {
       toast.error(e);
@@ -388,6 +497,7 @@ export default function PortfolioPage() {
         open={dialog === "fixed"}
         onClose={() => setDialog(null)}
         value={doc.achievement.daily_report_data}
+        teacher={teacher.data}
         onSave={(v) => update({ ...doc, achievement: { ...doc.achievement, daily_report_data: v } })}
       />
     </>
